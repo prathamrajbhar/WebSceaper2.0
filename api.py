@@ -13,50 +13,30 @@ import uvicorn
 from web_scraper import WebScraper, OrganicResult, RelatedQuestion, KnowledgeGraph, ScrapedContent
 
 # ---------------------------------------------------------------------------
-# Global State for Persistent Browsers
+# Global State for Persistent Browser
 # ---------------------------------------------------------------------------
 class ScraperPool:
-    google_scraper: Optional[WebScraper] = None
-    bing_scraper: Optional[WebScraper] = None
-    ddg_scraper: Optional[WebScraper] = None
-
-    # Locks to prevent concurrent API requests from typing in the same browser tab
-    google_lock: asyncio.Lock = asyncio.Lock()
-    bing_lock: asyncio.Lock = asyncio.Lock()
-    ddg_lock: asyncio.Lock = asyncio.Lock()
-
-    # Generic lock for URL scraping to not conflict with searching
-    scrape_lock: asyncio.Lock = asyncio.Lock()
-    scrape_engine: Optional[WebScraper] = None
+    shared_scraper: Optional[WebScraper] = None
+    # Single global lock to ensure sequential browser access
+    lock: asyncio.Lock = asyncio.Lock()
 
 pool = ScraperPool()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Initialize all scrapers sequentially on server startup
-    print("Initializing Google Scraper...")
-    pool.google_scraper = WebScraper()
-    await pool.google_scraper.initialize()
-
-    print("Initializing Bing Scraper...")
-    pool.bing_scraper = WebScraper()
-    await pool.bing_scraper.initialize()
+    # Initialize a single shared browser sequentially on server startup
+    print("Initializing Shared Web Scraper...")
+    pool.shared_scraper = WebScraper()
+    await pool.shared_scraper.initialize()
     
-    print("Initializing DuckDuckGo Scraper...")
-    pool.ddg_scraper = WebScraper()
-    await pool.ddg_scraper.initialize()
-
-    # Can just use duckduckgo for generic scraping URL jobs too
-    pool.scrape_engine = pool.ddg_scraper
-
-    print("All Scrapers are warmed up and ready!")
+    print("Web Scraper is warmed up and ready!")
     yield
 
     # Cleanup on shutdown
-    print("Shutting down Scrapers...")
-    await pool.google_scraper.cleanup()
-    await pool.bing_scraper.cleanup()
-    await pool.ddg_scraper.cleanup()
+    print("Shutting down Scraper...")
+    if pool.shared_scraper:
+        await pool.shared_scraper.cleanup()
+
 
 app = FastAPI(
     title="Web Scraper API",
@@ -94,66 +74,18 @@ async def api_search(request: SearchRequest):
     engine_requested = request.engine.lower().strip()
     
     try:
-        if engine_requested == "all":
-            # For "all", we dispatch to all 3 but inside their respective locks
-            async def run_google():
-                async with pool.google_lock:
-                    res = await pool.google_scraper.search(request.query, engine="google", num=request.num)
-                    return ("google",) + res
+        async with pool.lock:
+            # Note: For 'all', we just use Google as default since we now have one browser
+            target_engine = "google" if engine_requested == "all" else engine_requested
             
-            async def run_bing():
-                async with pool.bing_lock:
-                    res = await pool.bing_scraper.search(request.query, engine="bing", num=request.num)
-                    return ("bing",) + res
-            
-            async def run_ddg():
-                async with pool.ddg_lock:
-                    res = await pool.ddg_scraper.search(request.query, engine="duckduckgo", num=request.num)
-                    return ("duckduckgo",) + res
-
-            tasks = [asyncio.create_task(run_google()), asyncio.create_task(run_bing()), asyncio.create_task(run_ddg())]
-            
-            winner = None
-            for fut in asyncio.as_completed(tasks):
-                try:
-                    res = await fut
-                    eng, organic, questions, kg = res
-                    if organic:
-                        winner = res
-                        # Cancel remaining tasks
-                        for t in tasks:
-                            if not t.done():
-                                t.cancel()
-                        break
-                except Exception:
-                    pass
-            
-            if not winner:
-                raise HTTPException(status_code=500, detail="All search engines failed.")
-
-            winning_engine, organic, questions, kg = winner
-            return SearchResponse(
-                engine=winning_engine,
-                organic_results=organic,
-                related_questions=questions,
-                knowledge_graph=kg
+            organic, questions, kg = await pool.shared_scraper.search(
+                request.query, 
+                engine=target_engine, 
+                num=request.num
             )
-
-        else:
-            if engine_requested == "google":
-                async with pool.google_lock:
-                    organic, questions, kg = await pool.google_scraper.search(request.query, engine=engine_requested, num=request.num)
-            elif engine_requested == "bing":
-                async with pool.bing_lock:
-                    organic, questions, kg = await pool.bing_scraper.search(request.query, engine=engine_requested, num=request.num)
-            elif engine_requested in ("duckduckgo", "ddg"):
-                async with pool.ddg_lock:
-                    organic, questions, kg = await pool.ddg_scraper.search(request.query, engine=engine_requested, num=request.num)
-            else:
-                raise HTTPException(status_code=400, detail=f"Unsupported engine: {engine_requested}")
-
+            
             return SearchResponse(
-                engine=engine_requested,
+                engine=target_engine,
                 organic_results=organic,
                 related_questions=questions,
                 knowledge_graph=kg
@@ -164,11 +96,12 @@ async def api_search(request: SearchRequest):
             raise e
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
+
 @app.post("/api/scrape", response_model=ScrapeResponse)
 async def api_scrape(request: ScrapeRequest):
     try:
-        async with pool.scrape_lock:
-            content = await pool.scrape_engine.scrape_url(request.url)
+        async with pool.lock:
+            content = await pool.shared_scraper.scrape_url(request.url)
             if not content:
                 raise HTTPException(status_code=404, detail="Failed to extract content from URL")
             return ScrapeResponse(content=content)
@@ -176,6 +109,7 @@ async def api_scrape(request: ScrapeRequest):
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=f"Scrape failed: {str(e)}")
+
 
 # ---------------------------------------------------------------------------
 # App startup setup
