@@ -78,9 +78,9 @@ coverage.xml
 .ipynb_checkpoints
 
 # pyenv
-.python-version
 
 # pipenv
+
 Pipfile.lock
 
 # poetry
