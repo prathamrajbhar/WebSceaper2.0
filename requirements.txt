@@ -1,0 +1,22 @@
+# Core browser engine
+undetected-chromedriver==3.5.4
+selenium==4.15.2
+
+# Parsing
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Data / config
+pydantic==2.5.0
+python-dotenv==1.0.0
+
+# Optional: realistic user-agent rotation
+fake-useragent==1.4.0
+
+# Required on Python 3.12+ (fixes distutils removal)
+setuptools>=69.0
+
+# API server
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+gunicorn==21.2.0
