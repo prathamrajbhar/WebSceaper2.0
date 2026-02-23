@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Scraper API | Modern Interface</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>ScraperPro API</h1>
+            <p class="subtitle">High-performance web scraping and search engine extraction</p>
+        </header>
+
+        <div class="tabs">
+            <div class="tab active" data-target="search">Search Engine</div>
+            <div class="tab" data-target="scrape">URL Scraper</div>
+            <div class="tab" data-target="docs">API Documentation</div>
+        </div>
+
+        <!-- Search Card -->
+        <div class="card animate-fade" id="search-card">
+            <h2 class="card-title">🔍 Search Exploration</h2>
+            <div class="input-group">
+                <input type="text" id="search-query" placeholder="Enter search query...">
+                <select id="search-engine">
+                    <option value="google">Google</option>
+                    <option value="bing">Bing</option>
+                    <option value="all">All Engines</option>
+                </select>
+                <button id="search-btn" onclick="handleSearch()">Search</button>
+            </div>
+            <div id="search-results" class="results-area">
+                <div class="text-muted">Results will appear here...</div>
+            </div>
+        </div>
+
+        <!-- Scrape Card -->
+        <div class="card animate-fade" id="scrape-card" style="display: none;">
+            <h2 class="card-title">🌐 URL Extractor</h2>
+            <div class="input-group">
+                <input type="text" id="scrape-url" placeholder="https://example.com/article">
+                <button id="scrape-btn" onclick="handleScrape()">Scrape</button>
+            </div>
+            <div id="scrape-results" class="results-area">
+                <div class="text-muted">Extracted content will appear here...</div>
+            </div>
+        </div>
+
+        <!-- Docs Card -->
+        <div class="card animate-fade" id="docs-card">
+            <h2 class="card-title">📚 API Reference</h2>
+            <div class="doc-section">
+                <div class="doc-endpoint">
+                    <span class="method post">POST</span> <span class="endpoint-path">/api/search</span>
+                    <p class="text-muted" style="margin-top: 0.5rem;">Perform a search on Google or Bing.</p>
+                    <pre class="json-view" style="margin-top: 1rem; font-size: 0.8rem;">
+curl -X POST http://localhost:8002/api/search \
+     -H "Content-Type: application/json" \
+     -d '{"query": "openai", "engine": "google"}'</pre>
+                </div>
+
+                <div class="doc-endpoint">
+                    <span class="method post">POST</span> <span class="endpoint-path">/api/scrape</span>
+                    <p class="text-muted" style="margin-top: 0.5rem;">Extract clean text content from any public URL.
+                    </p>
+                    <pre class="json-view" style="margin-top: 1rem; font-size: 0.8rem;">
+curl -X POST https://webscrapeer-0dd75353a1e5.herokuapp.com/api/scrape \
+     -H "Content-Type: application/json" \
+     -d '{"url": "https://example.com"}'</pre>
+                </div>
+
+                <div class="doc-endpoint">
+                    <span class="method get">GET</span> <span class="endpoint-path">/health</span>
+                    <p class="text-muted" style="margin-top: 0.5rem;">Check server and browser status.</p>
+                    <pre class="json-view" style="margin-top: 1rem; font-size: 0.8rem;">
+curl https://webscrapeer-0dd75353a1e5.herokuapp.com/health</pre>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            Built with FastAPI & Undetected Chromedriver
+        </footer>
+    </div>
+
+    <script src="/static/js/main.js"></script>
+</body>
+
+</html>

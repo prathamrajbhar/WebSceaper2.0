@@ -6,6 +6,8 @@ from typing import List, Optional
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -44,6 +46,9 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Serve static files (CSS, JS)
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # ---------------------------------------------------------------------------
 # Request / Response Schemas
@@ -114,6 +119,11 @@ async def api_scrape(request: ScrapeRequest):
 # ---------------------------------------------------------------------------
 # App startup setup
 # ---------------------------------------------------------------------------
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("static/index.html", "r") as f:
+        return f.read()
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
