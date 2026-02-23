@@ -294,14 +294,25 @@ class WebScraper:
         chrome_bin = os.getenv("GOOGLE_CHROME_BIN")
         
         with _UC_PATCH_LOCK:
-            self.driver = uc.Chrome(
-                options=opts,
-                user_data_dir=self._temp_dir,
-                version_main=None,
-                use_subprocess=True,
-                browser_executable_path=chrome_bin,
-                headless=HEADLESS,
-            )
+            kwargs = {
+                "options": opts,
+                "user_data_dir": self._temp_dir,
+                "version_main": None,
+                "use_subprocess": True,
+                "headless": HEADLESS,
+            }
+            if chrome_bin:
+                kwargs["browser_executable_path"] = chrome_bin
+            
+            # On Heroku, we need to ensure the executable path is in a writable location
+            # undetected-chromedriver defaults to ~/.local/share/... which might be read-only
+            # or inconsistent. We can force it via the driver_executable_path if needed,
+            # but usually just setting the binary location is enough if the buildpacks are correct.
+            # However, the error log shows it trying to rename in /app/.local/share/...
+            # We can try to specify a writable driver_executable_path if it fails.
+            
+            self.driver = uc.Chrome(**kwargs)
+
         self.driver.implicitly_wait(8)
         self.driver.set_page_load_timeout(30)
         self._stealth()
