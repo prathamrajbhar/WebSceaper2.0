@@ -4,11 +4,12 @@ selenium==4.15.2
 
 # Parsing
 beautifulsoup4==4.12.2
-lxml==4.9.3
+lxml==5.1.0
 
 # Data / config
-pydantic==2.5.0
+pydantic==2.6.1
 python-dotenv==1.0.0
+
 
 # Optional: realistic user-agent rotation
 fake-useragent==1.4.0
